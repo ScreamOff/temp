@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 from scanner import scan_server
 
-app = Flask(__name__, static_folder="static", template_folder="templates")
+app = Flask(__name__)
 
 @app.route("/")
 def home():
@@ -11,11 +11,14 @@ def home():
 def scan():
     data = request.get_json()
     url = data.get("url")
+    depth = data.get("depth", 3)  # Pobieramy głębokość, domyślnie ustawiamy 3, jeśli nie podano
 
     if not url:
         return jsonify({"error": "Brak adresu URL"}), 400
 
-    result = scan_server(url)
+    # Przekazujemy url i depth do funkcji skanowania
+    result = scan_server(url, depth)
+
     return jsonify(result)
 
 if __name__ == "__main__":

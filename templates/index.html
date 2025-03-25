@@ -3,17 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>Skanner Serwera</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css">
+    <style>
+        .results {
+            margin-top: 20px;
+        }
+        .port-list, .resources-list {
+            margin-top: 10px;
+        }
+        .resources-list li {
+            word-wrap: break-word;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>Web Scanner</h1>
-        <input type="text" id="urlInput" placeholder="Podaj URL, np. https://example.com">
-        <button onclick="scanServer()">Skanuj</button>
-        <div id="result"></div>
+        <h1 class="mt-5">Skanner Serwera</h1>
+        <p>Podaj URL strony, aby zeskanować porty i pobrać zawartość serwera.</p>
+
+        <form id="scanForm">
+            <div class="mb-3">
+                <label for="url" class="form-label">Adres URL</label>
+                <input type="text" class="form-control" id="url" placeholder="Wprowadź URL" required>
+            </div>
+            <div class="mb-3">
+                <label for="depth" class="form-label">Głębokość skanowania</label>
+                <input type="number" class="form-control" id="depth" placeholder="Wprowadź głębokość skanowania" min="1" value="3">
+            </div>
+            <button type="submit" class="btn btn-primary">Skanuj</button>
+        </form>
+
+        <div class="results" id="results" style="display: none;">
+            <h3 class="mt-5">Wyniki skanowania:</h3>
+            <div id="scanDetails"></div>
+        </div>
     </div>
 
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Obsługuje wysłanie formularza
+            $('#scanForm').submit(function (e) {
+                e.preventDefault();  // Zapobiegamy domyślnej akcji formularza
+
+                var url = $('#url').val();
+                var depth = $('#depth').val();  // Pobieramy wartość głębokości skanowania
+
+                // Sprawdzanie czy URL jest poprawny
+                if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                    alert('Podaj pełny URL (z http:// lub https://)');
+                    return;
+                }
+
+                // Wysyłanie zapytania POST do backendu
+                $.ajax({
+                    url: '/scan',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ "url": url, "depth": depth }),  // Przekazujemy głębokość skanowania
+                    success: function (response) {
+                        // Przełączanie widoczności wyników
+                        $('#results').show();
+
+                        // Wyświetlanie danych
+                        var scanDetails = '<h4>Adres IP: ' + response.ip + '</h4>';
+
+                        // Wyświetlanie portów
+                        scanDetails += '<h5>Otwarte porty:</h5><ul class="list-group port-list">';
+                        for (const [port, status] of Object.entries(response.open_ports)) {
+                            scanDetails += '<li class="list-group-item">' + port + ' - ' + status + '</li>';
+                        }
+                        scanDetails += '</ul>';
+
+                        // Wyświetlanie zasobów
+                        scanDetails += '<h5>Zasoby:</h5>';
+                        scanDetails += '<ul class="list-group resources-list">';
+                        for (const [type, urls] of Object.entries(response.resources)) {
+                            if (urls.length > 0) {
+                                scanDetails += '<li class="list-group-item"><strong>' + type.charAt(0).toUpperCase() + type.slice(1) + ':</strong>';
+                                scanDetails += '<ul>';
+                                urls.forEach(function (url) {
+                                    scanDetails += '<li>' + url + '</li>';
+                                });
+                                scanDetails += '</ul></li>';
+                            }
+                        }
+                        scanDetails += '</ul>';
+
+                        // Wyświetlanie pełnych wyników na stronie
+                        $('#scanDetails').html(scanDetails);
+                    },
+                    error: function (xhr, status, error) {
+                        alert("Błąd podczas skanowania: " + error);
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>
